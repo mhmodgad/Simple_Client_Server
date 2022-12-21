@@ -15,6 +15,7 @@
 #define MAXDATASIZE 1000000 // max number of bytes we can get at once
 #define END "\\r\\n\n"
 #define MAXINPUTLINES 100
+char Ok[] = "HTTP/1.1 200 OK\\r\\n";
 void write_file(char *path, char *data);
 void get_file_data(int sockfd, char *buf);
 
@@ -103,8 +104,10 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		buf[numbytes] = '\0';
-		get_file_data(sockfd, buf);
 		printf("client: received '%s'\n", buf);
+		if(strcmp(buf, Ok) == 0){
+			get_file_data(sockfd, buf);
+		}
 	}
 	close(sockfd);
 	return 0;
@@ -112,26 +115,20 @@ int main(int argc, char *argv[]) {
 
 void get_file_data(int sockfd, char *buf) {
 	printf("Reading Picture Byte Array\n");
-	FILE *fileptr;
-	fileptr = fopen("1.png", "w");
-
-	if (fileptr == NULL) {
-		printf("unable to create file ");
-		exit(EXIT_FAILURE);
-	}
-
-	int size = 100000;
+	int size = 10000;
 	char p_array[size];
-	char *current = p_array;
-	int nb = read(sockfd, current, size);
-	while (nb >= 0) {
-		current = current + nb;
-		nb = read(sockfd, current, size);
-		printf("%s ", current);
-		fflush(stdout);
-		/*fputs(current, fileptr);*/
+	FILE *image = fopen("c1.html", "wb");
+	int nb = read(sockfd, p_array, size);
+	while (nb > 0) {
+		if (strncmp(p_array, Ok, strlen(Ok)) == 0)
+			break;
+
+		fwrite(p_array, sizeof(char), nb, image);
+		nb = read(sockfd, p_array, size);
 	}
-	fclose(fileptr);
+	fclose(image);
+	printf("Finished reading file\n");
+	fflush(stdout);
 }
 
 void write_file(char *path, char *data) {
@@ -142,10 +139,8 @@ void write_file(char *path, char *data) {
 		printf("unable to create file ");
 		exit(EXIT_FAILURE);
 	}
-
 	fputs(data, fileptr);
 	fclose(fileptr);
-
 }
 
 //tests

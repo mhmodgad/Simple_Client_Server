@@ -35,7 +35,7 @@ char Ok[] = "HTTP/1.1 200 OK\\r\\n";
 void get_command(int new_fd, char buffer[2048]);
 void parse_command(int new_fd, char *buf, char (*parsed)[1024], char *response);
 void handle_get(int new_fd, char *path, char *response);
-void read_file(int new_fd, char *path, char *reponse);
+void read_file(int new_fd, char *path);
 
 void write_file(char path[1024], char data[1024]);
 
@@ -181,13 +181,11 @@ int main(void) {
 				}
 
 				char buffer[2048];
-				char response[1000000];
-				memset(response, '\0', 1000000 * sizeof(char));
+				char response[10000];
+				memset(response, '\0', 10000 * sizeof(char));
 				get_command(new_fd, buffer);
 				printf("Server: received '%s'\n", buffer);
 				parse_command(new_fd, buffer, parsed, response);
-				if (send(new_fd, response, strlen(response), 0) == -1)
-					perror("send");
 				if (strcmp(response, "CLOSE") == 0) {
 					break;
 				}
@@ -259,45 +257,32 @@ void write_file(char path[1024], char data[1024]) {
 
 void handle_get(int new_fd, char *path, char *response) {
 	if (access(path, F_OK) == 0) {
-		// file exists
-		read_file(new_fd, path, response);
+		if (send(new_fd, Ok, strlen(Ok), 0) == -1)
+			perror("send");
+		read_file(new_fd, path);
+		sleep(1);
+		write(new_fd, Ok, strlen(Ok));
+		printf("%s ", "HTTP/1.1 200 OK\\r\\n");
+		fflush(stdout);
 	} else {
 		strcpy(response, Notfound);
 	}
 }
 
-void read_file(int new_fd, char *path, char *response) {
-//	printf("in read file\n");
-//	fflush(stdout);
-//	FILE *fileptr;
-//	char *buffer;
-//	long filelen;
-//	fileptr = fopen(path, "rb");  // Open the file in binary mode
-//	fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
-//	filelen = ftell(fileptr);         // Get the current byte offset in the file
-//	rewind(fileptr);                   // Jump back to the beginning of the file
-//	buffer = (char*) malloc(filelen * sizeof(char)); // Enough memory for the file
-//	fread(buffer, filelen, 1, fileptr); // Read in the entire file
-//	fclose(fileptr); // Close the file
-//	char * modifiedBuffer = (char*) malloc( (200 + filelen) * sizeof(char)); // Enough memory for the file
-//	strcpy(modifiedBuffer, Ok);
-//	strcat(modifiedBuffer, buffer);
-//	strcpy(response, modifiedBuffer);
-//	printf("\nfinal buffer is %s", response);
-//	fflush(stdout);
-//	free(buffer);
-//	free(modifiedBuffer);
+void read_file(int new_fd, char *path) {
 	FILE *fileptr;
 	long filelen;
 	fileptr = fopen(path, "rb");  // Open the file in binary mode
 	fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
 	filelen = ftell(fileptr);         // Get the current byte offset in the file
 	rewind(fileptr);
-	char send_buffer[100000]; // no link between BUFSIZE and the file size
+	char send_buffer[10000]; // no link between BUFSIZE and the file size
 	int nb = fread(send_buffer, 1, sizeof(send_buffer), fileptr);
 	while (!feof(fileptr)) {
+		printf("dd\n");
 		write(new_fd, send_buffer, nb);
-		nb = fread(send_buffer, 1, sizeof(send_buffer), fileptr);
-		// no need to bzero
+		nb = fread(send_buffer, 1, 10000, fileptr);
 	}
+	printf("%d \n", nb);
+	write(new_fd, send_buffer, nb);
 }

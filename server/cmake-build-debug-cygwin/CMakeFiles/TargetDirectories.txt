@@ -1,0 +1,3 @@
+/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug-cygwin/CMakeFiles/server.dir
+/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug-cygwin/CMakeFiles/edit_cache.dir
+/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug-cygwin/CMakeFiles/rebuild_cache.dir

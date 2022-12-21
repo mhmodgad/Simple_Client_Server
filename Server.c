@@ -62,25 +62,16 @@ int main(void) {
 	char buf[MAXDATASIZE];
 	char parsed[MAX_COMMANDS_SPACES][1024];
 	int sockfd, new_fd, numbytes; // listen on sock_fd, new connection on new_fd
-//
-//	int shm_id;
-//	key_t mem_key;
-//	int *numOfConnections;
-//	mem_key = ftok(".", 'a');
-//	shm_id = shmget(mem_key, sizeof(int), IPC_CREAT | 0666);
-//	if (shm_id < 0) {
-//		printf("*** shmget error (server) ***\n");
-//		exit(1);
-//	}
-//	numOfConnections = (int*)  shmat(shm_id, NULL, 0);
-//	/* attach */
-//	if (*numOfConnections == -1) {
-//		printf("*** shmat error (server) ***\n");
-//		exit(1);
-//	}
 
-	int *numOfConnections = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE,
-	MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	// ftok to generate unique key
+	key_t key = ftok("shmfile", 65);
+
+	// shmget returns an identifier in shmid
+	int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+
+	// shmat to attach to shared memory
+	int *num = (int*) shmat(shmid, (void*) 0, 0);
+	*num = 0;
 
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr; // connector's address information
@@ -159,7 +150,8 @@ int main(void) {
 		inet_ntop(their_addr.ss_family,
 				get_in_addr((struct sockaddr*) &their_addr), s, sizeof s);
 		printf("server: got connection from %s\n", s);
-
+		*num  = *num + 1;
+		printf("process: %d \n", *num);
 		if (!fork()) { // this is the child process
 			close(sockfd); // child doesn't need the listener
 			while (1) {
@@ -169,8 +161,8 @@ int main(void) {
 				FD_ZERO(&readfds);
 
 				FD_SET(new_fd, &readfds);
-				tv.tv_sec = 1000;
-
+				tv.tv_sec = 10;
+				printf("%d \n", *num);
 				rv = select(new_fd + 1, &readfds, NULL, NULL, &tv);
 
 				if (rv == -1) {
@@ -192,6 +184,7 @@ int main(void) {
 			}
 			printf("Closing...\n");
 			fflush(stdout);
+			*num = *num - 1;
 			close(new_fd);
 			exit(0);
 		}

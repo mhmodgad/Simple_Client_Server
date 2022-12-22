@@ -17,10 +17,9 @@
 #define END "\\r\\n\n"
 #define MAXINPUTLINES 100
 char Ok[] = "HTTP/1.1 200 OK\\r\\n";
-void write_file(char *path, char *data);
 void receive_file(int sockfd, char *path);
-void read_file(int soc_fd, char *path);
-void parse_command(int sockfd, char *buf, char (*parsed)[1024]);
+void send_file(int soc_fd, char *path);
+void parse_command(char *buf, char (*parsed)[1024]);
 
 // get sockaddr, IPv4 or IPv6:
 void* get_in_addr(struct sockaddr *sa) {
@@ -87,6 +86,8 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		char input[2048];
 		memset(input, '\0', 2048 * sizeof(char));
+		memset(parsed, '\0', sizeof(parsed));
+		memset(buf, '\0', sizeof(buf));
 		printf("Enter your command:\n");
 		do {
 			read = getline(&command, &len, stdin);
@@ -101,9 +102,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		printf("Sent request\n");
-		//char buffer[2048];
-		char response[10000];
-		parse_command(sockfd, input, parsed);
+		parse_command(input, parsed);
 		if (strcmp(parsed[0], "GET") == 0) {
 			if ((numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0)) == -1) {
 				perror("recv");
@@ -115,7 +114,13 @@ int main(int argc, char *argv[]) {
 				receive_file(sockfd, parsed[1]);
 			}
 		} else if (strcmp(parsed[0], "POST") == 0) {
-			read_file(sockfd, parsed[1]);
+			send_file(sockfd, parsed[1]);
+			if ((numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0)) == -1) {
+				perror("recv");
+				break;
+			}
+			buf[numbytes] = '\0';
+			printf("client: received '%s'\n", buf);
 		} else if (strcmp(parsed[0], "CLOSE") == 0) {
 			if ((numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0)) == -1) {
 				perror("recv");
@@ -137,43 +142,39 @@ int main(int argc, char *argv[]) {
 			buf[numbytes] = '\0';
 			printf("client: received '%s'\n", buf);
 		}
-
 	}
 	close(sockfd);
 	return 0;
 }
 
-void parse_command(int sockfd, char *buf, char (*parsed)[1024]) {
+void parse_command(char *buf, char (*parsed)[1024]) {
 	char *token;
 	char *rest = buf;
 	int i = 0;
-
 	while ((token = strtok_r(rest, " ", &rest))) {
 		strcpy(parsed[i], token);
 		i++;
 	}
 }
 
-void read_file(int soc_fd, char *path) {
-	printf("\npath sent %s", path);
-	fflush(stdout);
-	FILE *fileptr;
-	long filelen;
-	fileptr = fopen("C:\\Users\\SourcesNet\\Documents\\Bandicam\\monster.jpg",
-			"rb");  // Open the file in binary mode
-	fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
-	filelen = ftell(fileptr);         // Get the current byte offset in the file
-	rewind(fileptr);
-	char send_buffer[10000]; // no link between BUFSIZE and the file size
-	int nb = fread(send_buffer, 1, sizeof(send_buffer), fileptr);
-	fflush(stdout);
-	while (!feof(fileptr)) {
-		write(soc_fd, send_buffer, nb);
-		nb = fread(send_buffer, 1, 10000, fileptr);
-	}
-	write(soc_fd, send_buffer, nb);
-	sleep(0.001);
-	write(soc_fd, Ok, strlen(Ok));
+void send_file(int soc_fd, char *path) {
+    fflush(stdout);
+    FILE *fileptr;
+    long filelen;
+    fileptr = fopen("D:\\1.pdf", "rb");  // Open the file in binary mode
+    fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
+    filelen = ftell(fileptr);         // Get the current byte offset in the file
+    rewind(fileptr);
+    char send_buffer[10000]; // no link between BUFSIZE and the file size
+    int nb = fread(send_buffer, 1, sizeof(send_buffer), fileptr);
+    fflush(stdout);
+    while (!feof(fileptr)) {
+        write(soc_fd, send_buffer, nb);
+        nb = fread(send_buffer, 1, 10000, fileptr);
+    }
+    write(soc_fd, send_buffer, nb);
+    sleep(1);
+    write(soc_fd, Ok, strlen(Ok));
 }
 
 void receive_file(int sockfd, char *path) {
@@ -201,18 +202,6 @@ void receive_file(int sockfd, char *path) {
 	fclose(recievedFile);
 	printf("Finished reading\n");
 	fflush(stdout);
-}
-
-void write_file(char *path, char *data) {
-	FILE *fileptr;
-	fileptr = fopen(path, "w");
-
-	if (fileptr == NULL) {
-		printf("unable to create file ");
-		exit(EXIT_FAILURE);
-	}
-	fputs(data, fileptr);
-	fclose(fileptr);
 }
 
 //tests

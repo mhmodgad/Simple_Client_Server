@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin"
+			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -543,7 +543,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin/CMakeFiles/pkgRedirects"
+			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -1243,7 +1243,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin"
+			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin"
 		},
 		{
 			"name" : "client_IS_TOP_LEVEL",
@@ -1267,7 +1267,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client"
+			"value" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client"
 		}
 	],
 	"kind" : "cache",

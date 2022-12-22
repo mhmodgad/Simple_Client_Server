@@ -14,6 +14,13 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define PORT "8082"  // the port users will be connecting to
 
@@ -21,10 +28,15 @@
 #define MAXDATASIZE 2048 // max number of bytes we can get at once
 #define MAX_COMMANDS_SPACES 100
 #define END "\\r\\n\n"
+
+char Notfound[] = "HTTP/1.1 404 Not Found\\r\\n";
+char Ok[] = "HTTP/1.1 200 OK\\r\\n";
+
 void get_command(int new_fd, char buffer[2048]);
-char * parse_command(int new_fd, char *buf, char (*parsed)[1024]);
-char * handle_get(int new_fd, char *path);
-char * read_file(char *path);
+void parse_command(int new_fd, char *buf, char (*parsed)[1024], char *response);
+void handle_get(int new_fd, char *path, char *response);
+void read_file(int new_fd, char *path);
+void get_file_data(int sockfd, char* path);
 
 void write_file(char path[1024], char data[1024]);
 
@@ -51,6 +63,17 @@ int main(void) {
     char buf[MAXDATASIZE];
     char parsed[MAX_COMMANDS_SPACES][1024];
     int sockfd, new_fd, numbytes; // listen on sock_fd, new connection on new_fd
+
+    // ftok to generate unique key
+    key_t key = ftok("shmfile", 65);
+
+    // shmget returns an identifier in shmid
+    int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+
+    // shmat to attach to shared memory
+    /*int *num = (int*) shmat(shmid, (void*) 0, 0);
+    num = 0;*/
+
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr; // connector's address information
     socklen_t sin_size;
@@ -58,10 +81,6 @@ int main(void) {
     int yes = 1;
     char s[INET6_ADDRSTRLEN];
     int rv;
-
-    /*char* buff = read_file("C:\\Users\\SourcesNet\\Desktop\\assigment1_test.txt");
-    printf("the returned buffer is  %s", buff);
-    fflush(stdout);*/
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -88,7 +107,8 @@ int main(void) {
         }
 
         const int enable = 1;
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))
+            < 0)
             printf("setsockopt(SO_REUSEADDR) failed");
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
@@ -119,45 +139,57 @@ int main(void) {
         perror("sigaction");
         exit(1);
     }
-
     printf("server: waiting for connections...\n");
 
     while (1) {  // main accept() loop
-        //printf("iam here");
         sin_size = sizeof their_addr;
         new_fd = accept(sockfd, (struct sockaddr*) &their_addr, &sin_size);
         if (new_fd == -1) {
             perror("accept");
             continue;
         }
-
         inet_ntop(their_addr.ss_family,
                   get_in_addr((struct sockaddr*) &their_addr), s, sizeof s);
         printf("server: got connection from %s\n", s);
-
+        //*num  = *num + 1;
+        //printf("process: %d \n", *num);
         if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            char buffer[2048];
-            get_command(new_fd, buffer);
-            printf("Server: received '%s'\n", buffer);
-            char* buff = parse_command(new_fd, buffer, parsed);
-            printf("\nthe returned buff is %s", buff);
-            //printf("%s", parsed[0]);
+            while (1) {
+                fd_set readfds;
+                struct timeval tv;
 
-            //printf("%s", parsed[1]);
-            //printf("%s", parsed[2]);
-            //printf("%s", parsed[3]);
-            //read_file(parsed[1]);
+                FD_ZERO(&readfds);
 
-            if (send(new_fd, buff, strlen(buff), 0) == -1)
-                perror("send");
+                FD_SET(new_fd, &readfds);
+                tv.tv_sec = 10;
+                //printf("%d \n", *num);
+                rv = select(new_fd + 1, &readfds, NULL, NULL, &tv);
+
+                if (rv == -1) {
+                    perror("select"); // error occurred in select()
+                } else if (rv == 0) {
+                    printf("Timeout occurred! No data after 100 seconds.\n");
+                    break;
+                }
+
+                char buffer[2048];
+                char response[10000];
+                memset(response, '\0', 10000 * sizeof(char));
+                get_command(new_fd, buffer);
+                printf("Server: received '%s'\n", buffer);
+                parse_command(new_fd, buffer, parsed, response);
+                if (strcmp(response, "CLOSE") == 0) {
+                    break;
+                }
+            }
+            printf("Closing...\n");
+            fflush(stdout);
+            //*num = *num - 1;
             close(new_fd);
-            printf("\n\naccheived here");
             exit(0);
         }
         close(new_fd);  // parent doesn't need this
-        //break;
-        //close(sockfd);
     }
 
     return 0;
@@ -165,45 +197,43 @@ int main(void) {
 
 void get_command(int new_fd, char buffer[2048]) {
     int numbytes;
-    char received[100][2048];
     int i = 0;
     char command[2048];
-    do {
-        if ((numbytes = recv(new_fd, command, MAXDATASIZE - 1, 0)) == -1) {
-            perror("recv");
-            exit(1);
-        }
-        if (i == 0) {
-            printf("The receved command is %s", command);
-            strcpy(buffer, command);
-        }
-        command[numbytes] = '\0';
-        i++;
-    } while (strcmp(command, END) != 0);
+    memset(command, '\0', 2048 * sizeof(char));
+    if ((numbytes = recv(new_fd, command, 2048 - 1, 0)) == -1) {
+        perror("recv");
+        exit(1);
+    }
+
+    printf("The received command is %s", command);
+    strcpy(buffer, command);
+
+    command[numbytes] = '\0';
     printf("received request\n");
+    fflush(stdout);
 }
 
-char * parse_command(int new_fd, char *buf, char (*parsed)[1024]) {
+void parse_command(int new_fd, char *buf, char (*parsed)[1024], char *response) {
     char *token;
     char *rest = buf;
     int i = 0;
+
     while ((token = strtok_r(rest, " ", &rest))) {
         strcpy(parsed[i], token);
-        printf("%s ", parsed[i]);
         i++;
     }
-    printf("%s ", parsed[0]);
+
     if (strcmp(parsed[0], "GET") == 0) {
-        char* buff = handle_get(new_fd, parsed[1]);
-        return buff;
+        handle_get(new_fd, parsed[1], response);
     } else if (strcmp(parsed[0], "POST") == 0) {
-        printf("\npath is %s", parsed[1]);
-        printf("\ndata is %s", parsed[3]);
-        write_file(parsed[1], parsed[3]);
-        return "HTTP/1.1 200 OK\\r\\n";
+        get_file_data(new_fd, parsed[1]);
+        strcpy(response, Ok);
+        sleep(1);
+        write(new_fd, Ok, strlen(Ok));
+    } else if (strcmp(parsed[0], "CLOSE") == 0) {
+        strcpy(response, "CLOSE");
     } else {
-        printf("UNKNOWN REQUEST");
-        exit(-1);
+        strcpy(response, "UNKNOWN REQUEST");
     }
 }
 
@@ -211,7 +241,7 @@ void write_file(char path[1024], char data[1024]) {
     FILE *fileptr;
     fileptr = fopen(path, "w");
 
-    if (fileptr == NULL){
+    if (fileptr == NULL) {
         printf("unable to create file ");
         exit(EXIT_FAILURE);
     }
@@ -221,50 +251,61 @@ void write_file(char path[1024], char data[1024]) {
 
 }
 
-char * handle_get(int new_fd, char *path) {
-    printf("in handle get");
+void handle_get(int new_fd, char *path, char *response) {
     if (access(path, F_OK) == 0) {
-        // file exists
-        char* buff =  read_file(path);
-        return buff;
+        if (send(new_fd, Ok, strlen(Ok), 0) == -1)
+            perror("send");
+        read_file(new_fd, path);
+        sleep(1);
+        write(new_fd, Ok, strlen(Ok));
+        printf("%s ", "HTTP/1.1 200 OK\\r\\n");
+        fflush(stdout);
     } else {
-        return "HTTP/1.1 404 Not Found\\r\\n";
-        // file doesn't exist
-        //printf("CANNOT BE FOUND");
-        //exit(-1);
+        strcpy(response, Notfound);
     }
 }
 
-char * read_file(char *path) {
-    printf("iam here");
+void read_file(int new_fd, char *path) {
+    printf("\npath is %s", path);
     fflush(stdout);
     FILE *fileptr;
-    char* buffer;
     long filelen;
-
-    //printf("\npath is %s", &path);
     fileptr = fopen(path, "rb");  // Open the file in binary mode
     fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
     filelen = ftell(fileptr);         // Get the current byte offset in the file
-    rewind(fileptr);                   // Jump back to the beginning of the file
-
-    buffer = (char*) malloc(filelen * sizeof(char)); // Enough memory for the file
-    fread(buffer, filelen, 1, fileptr); // Read in the entire file
-    fclose(fileptr); // Close the file
-    //printf("%s", buffer);
-    //fflush(stdout);
-    //printf("triggered");
-    char * response = "HTTP/1.1 200 OK\\r\\n ";
-    char copiedBuffer[1024];
-    strcpy(copiedBuffer, buffer);
-    char modifiedBuffer[1024];
-    strcpy(modifiedBuffer, response);
-    //strcpy(modifiesBuffer, buffer);
-    strcat(modifiedBuffer, copiedBuffer);
-    char* finalBuffer;
-    finalBuffer = modifiedBuffer;
-    //strcpy(finalBuffer, modifiesBuffer);
-    printf("\nfinal buffer is %s", finalBuffer);
+    rewind(fileptr);
+    char send_buffer[10000]; // no link between BUFSIZE and the file size
+    int nb = fread(send_buffer, 1, sizeof(send_buffer), fileptr);
+    //printf("\n nb now is %d", nb);
     fflush(stdout);
-    return finalBuffer;
+    while (!feof(fileptr)) {
+        //printf("dd\n");
+        write(new_fd, send_buffer, nb);
+        nb = fread(send_buffer, 1, 10000, fileptr);
+        //printf("\n nb now is %d", nb);
+    }
+    printf("%d \n", nb);
+    write(new_fd, send_buffer, nb);
+}
+
+
+void get_file_data(int sockfd, char* path) {
+    printf("Reading Picture Byte Array\n");
+    int size = 10000;
+    char p_array[size];
+    FILE *fileSent = fopen(path, "wb");
+    int nb = read(sockfd, p_array, size);
+    //printf("\n value of nd is %d", nb);
+    while (nb > 0) {
+        if (strncmp(p_array, Ok, strlen(Ok)) == 0)
+            break;
+
+        //printf("\niam here");
+        fflush(stdout);
+        fwrite(p_array, sizeof(char), nb, fileSent);
+        nb = read(sockfd, p_array, size);
+    }
+    fclose(fileSent);
+    printf("Finished reading file\n");
+    fflush(stdout);
 }

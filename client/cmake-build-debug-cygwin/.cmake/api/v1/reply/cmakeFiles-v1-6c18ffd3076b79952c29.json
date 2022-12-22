@@ -139,8 +139,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin",
-		"source" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client"
+		"build" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin",
+		"source" : "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client"
 	},
 	"version" : 
 	{

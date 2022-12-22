@@ -1,4 +1,4 @@
-# Install script for directory: /cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client
+# Install script for directory: /cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

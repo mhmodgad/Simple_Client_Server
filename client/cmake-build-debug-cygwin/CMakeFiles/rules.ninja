@@ -12,6 +12,16 @@
 # =============================================================================
 
 #############################################
+# Rule for compiling C files.
+
+rule C_COMPILER__client_Debug
+  depfile = $DEP_FILE
+  deps = gcc
+  command = /usr/bin/cc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
 # Rule for compiling CXX files.
 
 rule CXX_COMPILER__client_Debug
@@ -42,7 +52,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /cygdrive/c/Users/SourcesNet/AppData/Local/JetBrains/CLion2022.3/cygwin_cmake/bin/cmake.exe --regenerate-during-build -S/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client -B/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/Client/cmake-build-debug-cygwin
+  command = /cygdrive/c/Users/SourcesNet/AppData/Local/JetBrains/CLion2022.3/cygwin_cmake/bin/cmake.exe --regenerate-during-build -S/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client -B/cygdrive/e/year3_term1/networks_labs/Assigments/Assigment1/client/cmake-build-debug-cygwin
   description = Re-running CMake...
   generator = 1
 

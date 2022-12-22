@@ -10,7 +10,7 @@
 
 #include <arpa/inet.h>
 
-#define PORT "8082" // the port client will be connecting to
+char PORT[] = "8082"; // the port client will be connecting to
 
 #define MAXDATASIZE 1000000 // max number of bytes we can get at once
 #define MAX_COMMANDS_SPACES 100
@@ -41,10 +41,15 @@ int main(int argc, char *argv[]) {
 	size_t len = 0;
 	ssize_t read = 0;
 
-	if (argc != 2) {
+	if (argc < 2) {
 		fprintf(stderr, "usage: client hostname\n");
 		exit(1);
 	}
+	if(argc == 3){
+		 strcpy(PORT, argv[2]);
+	}
+	printf("%d  ", PORT);
+	fflush(stdout);
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;

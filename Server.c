@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define PORT "8082"  // the port users will be connecting to
+char PORT[] = "8082"; // the port users will be connecting to
 
 #define BACKLOG 10   // how many pending connections queue will hold
 #define MAXDATASIZE 2048 // max number of bytes we can get at once
@@ -55,20 +55,26 @@ void* get_in_addr(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6*) sa)->sin6_addr);
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+	printf("%s ", argv[1]);
+	if (argc == 2) {
+		strcpy(PORT, argv[1]);
+	}
+	printf("%s  ", PORT);
+	fflush(stdout);
 	char buf[MAXDATASIZE];
 	char parsed[MAX_COMMANDS_SPACES][1024];
 	int sockfd, new_fd, numbytes; // listen on sock_fd, new connection on new_fd
 
 	// ftok to generate unique key
-	// key_t key = ftok("shmfile", 65);
+	key_t key = ftok("shmfile", 65);
 
 	// shmget returns an identifier in shmid
-	// int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+	int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
 
-	// shmat to attach to shared memory
-	/*int *num = (int*) shmat(shmid, (void*) 0, 0);
-	 num = 0;*/
+	//  shmat to attach to shared memory
+	int *num = (int*) shmat(shmid, (void*) 0, 0);
+	*num = 0;
 
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr; // connector's address information
@@ -147,7 +153,7 @@ int main(void) {
 		inet_ntop(their_addr.ss_family,
 				get_in_addr((struct sockaddr*) &their_addr), s, sizeof s);
 		printf("server: got connection from %s\n", s);
-		//*num  = *num + 1;
+		*num = *num + 1;
 		//printf("process: %d \n", *num);
 		if (!fork()) { // this is the child process
 			close(sockfd); // child doesn't need the listener
@@ -163,7 +169,7 @@ int main(void) {
 
 				FD_SET(new_fd, &readfds);
 				tv.tv_sec = 100;
-				//printf("%d \n", *num);
+				printf("%d \n", *num);
 				rv = select(new_fd + 1, &readfds, NULL, NULL, &tv);
 
 				if (rv == -1) {
@@ -190,7 +196,7 @@ int main(void) {
 			}
 			printf("Closing...\n");
 			fflush(stdout);
-			//*num = *num - 1;
+			*num = *num - 1;
 			close(new_fd);
 			exit(0);
 		}

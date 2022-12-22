@@ -1,3 +1,0 @@
-E:/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug/CMakeFiles/server.dir
-E:/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug/CMakeFiles/edit_cache.dir
-E:/year3_term1/networks_labs/Assigments/Assigment1/server/cmake-build-debug/CMakeFiles/rebuild_cache.dir

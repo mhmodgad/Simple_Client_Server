@@ -1,7 +1,17 @@
 GET D:\1.pdf HTTP/1.1\r\n
-\r\n
+Host: www-net.cs.umass.edu\r\n
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X10.15; rv:80.0) Gecko/20100101 Firefox/80.0 \r\n
+Accept: text/html,application/xhtml+xml\r\n
+Accept-Language: en-us,en;q=0.5\r\n
+Accept-Encoding: gzip,deflate\r\n
+Connection: keep-alive\r\n
 
 
 
 POST D:\Assignment\1.pdf HTTP/1.1\r\n
-\r\n
+Host: www-net.cs.umass.edu\r\n
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X10.15; rv:80.0) Gecko/20100101 Firefox/80.0 \r\n
+Accept: text/html,application/xhtml+xml\r\n
+Accept-Language: en-us,en;q=0.5\r\n
+Accept-Encoding: gzip,deflate\r\n
+Connection: keep-alive\r\n
